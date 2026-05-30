@@ -4,12 +4,12 @@ export const environment = {
   baseUrl: 'https://demetriodentalback-production.up.railway.app',     // ✅ CORREGIDO
   wsUrl: 'wss://demetriodentalback-production.up.railway.app',         // ✅ CORREGIDO
   firebase: {
-      apiKey: 'AIzaSyA4fQYr8Pj1N3eNsTkM90uMCKA495iQX_I',
-    authDomain: 'labrosasnotificaciones.firebaseapp.com',
-    projectId: 'labrosasnotificaciones',
-    storageBucket: 'labrosasnotificaciones.firebasestorage.app',
-    messagingSenderId: '385266856992',
-    appId: '1:385266856992:web:ee718300dcb112b6e23845',
-    vapidKey: 'BNloJlSsIhN3MB8mmKDSj2RFXtgX45ooJzTxH3bL-eeLnnJyp44yH-x1-kaO-_DMVglpYCX_XXhSRi5X14e_6TI'
+      apiKey: 'AIzaSyAYc_qACmyDhFtqVzN-OAfFHN0X2-QUSzE',
+    authDomain: 'labdemetrio-28c4d.firebaseapp.com',
+    projectId: 'labdemetrio-28c4d',
+    storageBucket: 'labdemetrio-28c4d.firebasestorage.app',
+    messagingSenderId: '195945779360',
+    appId: '1:195945779360:web:f3622d8b42639e854139c5',
+    vapidKey: 'BNCbEGglbFg6264SeTRkJTAVa2eDoM42mv8xFWjP9AMtfAbVogsffH3QYhLy4Tdh72N0hmfRJ6ihlqDZ7KhMOtY'
   }
 };
