@@ -1,8 +1,8 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://backendeduar-production.up.railway.app/api',  // ✅ CORREGIDO
-  baseUrl: 'https://backendeduar-production.up.railway.app',     // ✅ CORREGIDO
-  wsUrl: 'wss://backendeduar-production.up.railway.app',         // ✅ CORREGIDO
+  apiUrl: 'https://demetriodentalback-production.up.railway.app/api',  // ✅ CORREGIDO
+  baseUrl: 'https://demetriodentalback-production.up.railway.app',     // ✅ CORREGIDO
+  wsUrl: 'wss://demetriodentalback-production.up.railway.app',         // ✅ CORREGIDO
   firebase: {
       apiKey: 'AIzaSyA4fQYr8Pj1N3eNsTkM90uMCKA495iQX_I',
     authDomain: 'labrosasnotificaciones.firebaseapp.com',
