@@ -40,15 +40,6 @@ export class WhatsAppService {
           <textarea id="mensaje-whatsapp" class="whatsapp-textarea" 
                     placeholder="Escribe tu mensaje..." 
                     style="min-height: 200px;">${mensajePredefinido}</textarea>
-          
-          <div class="variables-info">
-            <div class="variables-header">
-              <i class="fas fa-code"></i>
-              <span>Variables disponibles</span>
-            </div>
-            <div class="variables-grid">
-            </div>
-          </div>
         </div>
       `,
       showCancelButton: true,
