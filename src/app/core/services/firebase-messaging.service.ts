@@ -110,7 +110,7 @@ export class FirebaseMessagingService implements OnDestroy {
       this.unsubscribeOnMessage = onMessage(this.messaging, (payload: any) => {
         console.log('[FCM] Mensaje en foreground recibido:', payload);
         const msg: FcmMessage = {
-          title: payload.notification?.title ?? 'Lab.Rosas',
+          title: payload.notification?.title ?? 'Lab.Demitrio',
           body: payload.notification?.body ?? '',
           icon: payload.notification?.icon ?? '/favicon.ico',
           tag: payload.data?.tag,
