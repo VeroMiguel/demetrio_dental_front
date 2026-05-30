@@ -2,7 +2,6 @@ export const environment = {
   production: true,
   apiUrl: 'https://demetriodentalback-production.up.railway.app/api',  // ✅ CORREGIDO
   baseUrl: 'https://demetriodentalback-production.up.railway.app',     // ✅ CORREGIDO
-  imagenesUrl: 'https://demetriodentalfront-production.up.railway.app', // ✅ CORREGIDO
   wsUrl: 'wss://demetriodentalback-production.up.railway.app',         // ✅ CORREGIDO
   firebase: {
       apiKey: 'AIzaSyAYc_qACmyDhFtqVzN-OAfFHN0X2-QUSzE',

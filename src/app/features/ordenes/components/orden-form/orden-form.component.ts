@@ -154,7 +154,7 @@ cargarOrden() {
       if (orden.imagen_referencia_url) {
         // ✅ Construir URL completa para la imagen
     
-        const imagenesUrl = environment.imagenesUrl.replace(/\/+$/, ''); // Eliminar barra final si existe
+        const imagenesUrl = environment.baseUrl.replace(/\/+$/, ''); // Eliminar barra final si existe
       
         this.previewUrl = `${imagenesUrl}${orden.imagen_referencia_url}`;
         console.log('🖼️ Imagen de referencia cargada:', this.previewUrl);
