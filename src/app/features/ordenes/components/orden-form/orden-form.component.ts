@@ -12,7 +12,7 @@ import Swal from 'sweetalert2';
 import { SearchableSelectComponent } from '../../../../shared/components/searchable-select/searchable-select.component';
 import { ImagenPipe } from '../../../../shared/pipes/imagen.pipe';
 import { HoraPipe } from 'src/app/shared/pipes/hora.pipe';
-
+import { environment } from '../../../../../environments/environment';
 @Component({
   selector: 'app-orden-form',
   standalone: true,
@@ -153,8 +153,10 @@ cargarOrden() {
       // Cargar la imagen de referencia existente
       if (orden.imagen_referencia_url) {
         // ✅ Construir URL completa para la imagen
-        const baseUrl = 'http://localhost:3000';
-        this.previewUrl = `${baseUrl}${orden.imagen_referencia_url}`;
+    
+        const imagenesUrl = environment.imagenesUrl.replace(/\/+$/, ''); // Eliminar barra final si existe
+      
+        this.previewUrl = `${imagenesUrl}${orden.imagen_referencia_url}`;
         console.log('🖼️ Imagen de referencia cargada:', this.previewUrl);
       }
       

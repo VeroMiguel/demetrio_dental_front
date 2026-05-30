@@ -1,6 +1,7 @@
 export const environment = {
   production: false,
   baseUrl: 'http://localhost:3000',
+  imagenesUrl: 'http://localhost:3000',
   wsUrl: 'ws://localhost:3000',
   apiUrl: 'http://localhost:3000/api',
    firebase: {
