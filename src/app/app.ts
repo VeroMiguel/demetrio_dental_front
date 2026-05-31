@@ -39,27 +39,22 @@ export class AppComponent implements OnInit, OnDestroy {
     this.currentTheme = localStorage.getItem('theme') || 'dark';
     document.body.setAttribute('data-theme', this.currentTheme);
 
-    // Registrar el Service Worker principal
     this.registrarServiceWorker();
 
-    // Inicializar Firebase en background (no bloquea el arranque)
     this.fcmService.initialize().then(() => {
       console.log('[App] Firebase Messaging inicializado');
     });
     
-    // ✅ SOLICITAR PERMISO DE NOTIFICACIONES AL INICIAR
     this.solicitarPermisosIniciales();
   }
 
   ngOnInit() {
-    // Registrar Service Worker al iniciar la app
     this.registrarServiceWorker();
-  // this.registrarFirebaseSW();  // ❌ ELIMINAR o COMENTAR esta línea
     
-    // Redirigir si el token es inválido después de la verificación
     this.authSubscription = this.authService.authLoading$.subscribe((loading) => {
       if (!loading) {
         if (this.authService.isAuthenticated()) {
+          // ✅ Solo iniciar SessionService, no hay timer duplicado
           this.sessionService.iniciar();
           this.notificationService.solicitarPermiso();
         } else if (this.router.url !== '/login') {
@@ -70,14 +65,9 @@ export class AppComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * ✅ Solicitar permisos de notificación al iniciar la app
-   */
   private solicitarPermisosIniciales(): void {
     if ('Notification' in window && 'serviceWorker' in navigator) {
-      // Verificar si ya tiene permiso
       if (Notification.permission === 'default') {
-        // Esperar un poco para no molestar al usuario al inicio
         setTimeout(() => {
           Notification.requestPermission().then(permiso => {
             console.log('[App] Permiso de notificaciones inicial:', permiso);
@@ -86,9 +76,7 @@ export class AppComponent implements OnInit, OnDestroy {
       }
     }
     
-    // ✅ Crear canal de notificaciones en Android (si es necesario)
     if ('Notification' in window && 'serviceWorker' in navigator) {
-      // Esto ayuda a que las notificaciones funcionen mejor en Android
       console.log('[App] Notificaciones soportadas en este navegador');
     }
   }
@@ -102,20 +90,6 @@ export class AppComponent implements OnInit, OnDestroy {
       });
     }
   }
-
-// ❌ ELIMINAR COMPLETAMENTE este método
-// private registrarFirebaseSW(): void {
-//     if ('serviceWorker' in navigator) {
-//         navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-//             scope: '/',
-//             updateViaCache: 'none'
-//         }).then(reg => {
-//             console.log('[App] ✅ Firebase SW registrado:', reg.scope);
-//         }).catch(err => {
-//             console.error('[App] ❌ Error registrando Firebase SW:', err);
-//         });
-//     }
-// }
 
   ngOnDestroy() {
     this.authSubscription?.unsubscribe();

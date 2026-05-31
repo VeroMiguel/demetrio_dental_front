@@ -1,19 +1,3 @@
-/**
- * SessionService
- * ─────────────────────────────────────────────────────────────────────────────
- * Monitorea la inactividad del usuario y cierra la sesión automáticamente.
- *
- * El tiempo de inactividad se lee desde ConfigService en tiempo real, por lo
- * que cualquier cambio en la página de Configuración se aplica de inmediato
- * sin necesidad de recargar la app.
- *
- * Flujo:
- *   1. iniciar() → registra listeners de actividad + tick cada segundo
- *   2. Cada segundo verifica cuánto tiempo lleva inactivo el usuario
- *   3. Si supera (tiempoCierreAutomatico - ADVERTENCIA_SEG) → muestra modal
- *   4. Si supera tiempoCierreAutomatico → cierra sesión y redirige a /login
- */
-
 import { Injectable, NgZone, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Subject, interval, Subscription } from 'rxjs';
@@ -24,7 +8,7 @@ export interface EstadoSesion {
   activa: boolean;
   mostrarAdvertencia: boolean;
   segundosRestantes: number;
-  tiempoInactividad: number; // segundos
+  tiempoInactividad: number;
 }
 
 @Injectable({
@@ -32,17 +16,11 @@ export interface EstadoSesion {
 })
 export class SessionService implements OnDestroy {
 
-  // ─── Configuración ────────────────────────────────────────────────────────
-
-  /** Segundos antes del cierre en que se muestra la advertencia */
   private readonly ADVERTENCIA_SEG = 60;
 
-  /** Tiempo total de inactividad en segundos (leído desde ConfigService) */
   private get TIEMPO_INACTIVIDAD_SEG(): number {
     return this.configService.config.tiempoCierreAutomatico * 60;
   }
-
-  // ─── Estado ───────────────────────────────────────────────────────────────
 
   private ultimaActividad: number = Date.now();
   private destroy$ = new Subject<void>();
@@ -57,14 +35,15 @@ export class SessionService implements OnDestroy {
 
   public estado$ = this.estadoSubject.asObservable();
 
-  // ─── Eventos de actividad ─────────────────────────────────────────────────
-
+  // ✅ Eventos mejorados para móvil y PC
   private readonly EVENTOS_ACTIVIDAD = [
     'mousemove', 'mousedown', 'keypress', 'keydown',
-    'scroll', 'touchstart', 'touchmove', 'click', 'wheel'
+    'scroll', 'touchstart', 'touchmove', 'click', 'wheel',
+    'focus', 'visibilitychange'
   ];
 
   private boundResetHandler = this.registrarActividad.bind(this);
+  private boundVisibilityHandler = this.handleVisibilityChange.bind(this);
 
   constructor(
     private router: Router,
@@ -72,24 +51,19 @@ export class SessionService implements OnDestroy {
     private configService: ConfigService
   ) {}
 
-  // ─── Ciclo de vida ────────────────────────────────────────────────────────
-
-  /**
-   * Inicia el monitoreo de inactividad. Llamar cuando el usuario inicia sesión.
-   */
   iniciar(): void {
-    this.detener(); // Limpiar cualquier estado previo
+    this.detener();
 
     this.ultimaActividad = Date.now();
     this.actualizarEstado(false, this.ADVERTENCIA_SEG);
 
-    // Registrar listeners fuera de Angular para no disparar change detection
     this.ngZone.runOutsideAngular(() => {
       this.EVENTOS_ACTIVIDAD.forEach(evento => {
         document.addEventListener(evento, this.boundResetHandler, { passive: true });
       });
-
-      // Tick cada segundo para actualizar el contador
+      
+      document.addEventListener('visibilitychange', this.boundVisibilityHandler);
+      
       this.tickSub = interval(1000)
         .pipe(takeUntil(this.destroy$))
         .subscribe(() => this.verificarInactividad());
@@ -98,17 +72,15 @@ export class SessionService implements OnDestroy {
     console.log('🛡️ Monitoreo de sesión iniciado');
   }
 
-  /**
-   * Detiene el monitoreo. Llamar cuando el usuario cierra sesión.
-   */
   detener(): void {
     this.EVENTOS_ACTIVIDAD.forEach(evento => {
       document.removeEventListener(evento, this.boundResetHandler);
     });
-
+    document.removeEventListener('visibilitychange', this.boundVisibilityHandler);
+    
     this.tickSub?.unsubscribe();
     this.tickSub = undefined;
-
+    
     this.actualizarEstado(false, this.ADVERTENCIA_SEG);
     console.log('🛡️ Monitoreo de sesión detenido');
   }
@@ -118,8 +90,6 @@ export class SessionService implements OnDestroy {
     this.destroy$.complete();
     this.detener();
   }
-
-  // ─── Lógica de inactividad ────────────────────────────────────────────────
 
   private registrarActividad(): void {
     this.ultimaActividad = Date.now();
@@ -131,11 +101,17 @@ export class SessionService implements OnDestroy {
     }
   }
 
+  private handleVisibilityChange(): void {
+    if (document.visibilityState === 'visible') {
+      this.registrarActividad();
+      console.log('🔄 Pestaña visible nuevamente, sesión extendida');
+    }
+  }
+
   private verificarInactividad(): void {
     const ahora = Date.now();
     const segundosInactivo = Math.floor((ahora - this.ultimaActividad) / 1000);
 
-    // Leer tiempo configurable en tiempo real desde ConfigService
     const tiempoTotalSeg = this.configService.config.tiempoCierreAutomatico * 60;
     const segundosHastaCierre = tiempoTotalSeg - segundosInactivo;
 
@@ -166,20 +142,12 @@ export class SessionService implements OnDestroy {
     });
   }
 
-  // ─── Acciones públicas ────────────────────────────────────────────────────
-
-  /**
-   * El usuario hizo clic en "Continuar sesión" → resetear timer.
-   */
   extenderSesion(): void {
     this.ultimaActividad = Date.now();
     this.actualizarEstado(false, this.ADVERTENCIA_SEG);
     console.log('🔄 Sesión extendida por el usuario');
   }
 
-  /**
-   * Cierra sesión inmediatamente (llamado desde el componente de advertencia).
-   */
   cerrarSesionAhora(): void {
     this.detener();
     this.limpiarSesion();
@@ -211,8 +179,6 @@ export class SessionService implements OnDestroy {
       this.router.navigate(['/login']);
     }
   }
-
-  // ─── Getters de utilidad ──────────────────────────────────────────────────
 
   get tiempoInactividadSegundos(): number {
     return Math.floor((Date.now() - this.ultimaActividad) / 1000);
