@@ -93,49 +93,29 @@ export class AppComponent implements OnInit, OnDestroy {
     }
   }
 
-
-// app.ts - Reemplazar el método registrarServiceWorker()
-
-private registrarServiceWorker(): void {
-  if ('serviceWorker' in navigator) {
-    // ✅ IMPORTANTE: Desregistrar Service Workers antiguos primero
-    navigator.serviceWorker.getRegistrations().then(registrations => {
-      registrations.forEach(registration => {
-        if (registration.active && registration.active.scriptURL.includes('service-worker.js')) {
-          console.log('[App] Desregistrando SW antiguo:', registration.active.scriptURL);
-          registration.unregister();
-        }
+  private registrarServiceWorker(): void {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/service-worker.js').then(reg => {
+        console.log('[App] Service Worker registrado:', reg.scope);
+      }).catch(err => {
+        console.warn('[App] Error registrando Service Worker:', err);
       });
-    });
-    
-    // ✅ Registrar nuevo Service Worker
-    navigator.serviceWorker.register('/service-worker.js', {
-      scope: '/',
-      updateViaCache: 'none'
-    }).then(reg => {
-      console.log('[App] ✅ Service Worker registrado correctamente');
-      
-      // ✅ No mostrar ninguna notificación al usuario
-      reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
-        if (newWorker) {
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed') {
-              // Actualizar silenciosamente sin notificar
-              if (navigator.serviceWorker.controller) {
-                newWorker.postMessage({ type: 'SKIP_WAITING' });
-              }
-            }
-          });
-        }
-      });
-    }).catch(err => {
-      console.warn('[App] Error registrando Service Worker:', err);
-    });
+    }
   }
-}
 
-
+// ❌ ELIMINAR COMPLETAMENTE este método
+// private registrarFirebaseSW(): void {
+//     if ('serviceWorker' in navigator) {
+//         navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+//             scope: '/',
+//             updateViaCache: 'none'
+//         }).then(reg => {
+//             console.log('[App] ✅ Firebase SW registrado:', reg.scope);
+//         }).catch(err => {
+//             console.error('[App] ❌ Error registrando Firebase SW:', err);
+//         });
+//     }
+// }
 
   ngOnDestroy() {
     this.authSubscription?.unsubscribe();
