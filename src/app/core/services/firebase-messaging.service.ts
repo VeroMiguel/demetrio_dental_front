@@ -173,6 +173,8 @@ async solicitarPermisoYObtenerToken(forceRefresh: boolean = false): Promise<stri
 
 // firebase-messaging.service.ts - Modificar obtenerToken()
 
+// firebase-messaging.service.ts - Modificar obtenerToken()
+
 async obtenerToken(forceRefresh: boolean = false): Promise<string | null> {
     if (!this.messaging) return null;
 
@@ -193,13 +195,28 @@ async obtenerToken(forceRefresh: boolean = false): Promise<string | null> {
     try {
         const { getToken } = await import('firebase/messaging');
         
-        // ✅ IMPORTANTE: Esperar a que el Service Worker esté listo
+        // ✅ IMPORTANTE: Registrar el Service Worker de Firebase ESPECÍFICO
         let swRegistration: ServiceWorkerRegistration | undefined;
         if ('serviceWorker' in navigator) {
-            // Esperar a que el SW esté activo
-            const registration = await navigator.serviceWorker.ready;
-            swRegistration = registration;
-            console.log('[FCM] Service Worker listo:', registration.active?.scriptURL);
+            // Primero, desregistrar SW antiguos
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (const registration of registrations) {
+                if (registration.active?.scriptURL.includes('service-worker.js')) {
+                    // Mantener el service-worker.js para PWA
+                    continue;
+                }
+                if (registration.active?.scriptURL.includes('firebase-messaging-sw.js')) {
+                    await registration.unregister();
+                    console.log('[FCM] Firebase SW antiguo desregistrado');
+                }
+            }
+            
+            // Registrar el Firebase SW
+            swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+                scope: '/',
+                updateViaCache: 'none'
+            });
+            console.log('[FCM] Firebase SW registrado:', swRegistration.active?.scriptURL);
         }
         
         const token = await getToken(this.messaging, {
