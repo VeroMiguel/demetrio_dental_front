@@ -1,18 +1,15 @@
 /**
  * service-worker.js — Lab.Demitrio
  * Service Worker ÚNICO (fusiona caché + Firebase)
- * CON SUPRESIÓN DE NOTIFICACIÓN DE ACTUALIZACIÓN
+ * VERSIÓN SILENCIOSA - Sin notificaciones de actualización
  */
+
+const CACHE_NAME = 'labdemitrio-v4';  // ✅ CAMBIAR VERSIÓN para forzar actualización
 
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
-const CACHE_NAME = 'labdemitrio-v3';
-const APP_SHELL = ['/'];
-
-// ============================================
-// CONFIGURACIÓN DE FIREBASE
-// ============================================
+// Configuración de Firebase
 const firebaseConfig = {
   apiKey: 'AIzaSyAYc_qACmyDhFtqVzN-OAfFHN0X2-QUSzE',
   authDomain: 'labdemetrio-28c4d.firebaseapp.com',
@@ -25,7 +22,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-// ✅ Variable para evitar notificaciones duplicadas
+// Variable para evitar notificaciones duplicadas
 let ultimaNotificacion = null;
 
 // ============================================
@@ -34,7 +31,6 @@ let ultimaNotificacion = null;
 messaging.onBackgroundMessage((payload) => {
   console.log('[SW] Mensaje en background recibido:', payload);
   
-  // ✅ Prevenir duplicados (misma notificación en menos de 2 segundos)
   const ahora = Date.now();
   const notificacionId = payload.data?.ordenId || payload.notification?.title;
   
@@ -48,27 +44,18 @@ messaging.onBackgroundMessage((payload) => {
   let cuerpo = payload.notification?.body || 'Tienes una notificación pendiente';
   let urlDestino = payload.data?.url || '/ordenes';
   
-  // ✅ Usar datos detallados de android.notification si existen
-  if (payload.data?.titulo_detallado) {
-    titulo = payload.data.titulo_detallado;
-  }
-  if (payload.data?.cuerpo_detallado) {
-    cuerpo = payload.data.cuerpo_detallado;
-  }
+  if (payload.data?.titulo_detallado) titulo = payload.data.titulo_detallado;
+  if (payload.data?.cuerpo_detallado) cuerpo = payload.data.cuerpo_detallado;
   
   const opciones = {
     body: cuerpo,
     icon: '/favicon.ico',
     badge: '/favicon.ico',
     tag: payload.data?.ordenId || `fcm-${Date.now()}`,
-    data: { 
-      url: urlDestino, 
-      ...payload.data,
-      timestamp: ahora 
-    },
+    data: { url: urlDestino, ...payload.data, timestamp: ahora },
     vibrate: [200, 100, 200],
     requireInteraction: true,
-    actions: [] // SIN BOTONES
+    actions: []
   };
   
   self.registration.showNotification(titulo, opciones);
@@ -106,33 +93,30 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 // ============================================
-// CACHÉ PARA OFFLINE
+// INSTALL - SILENCIOSO
 // ============================================
-
-// ✅ INSTALL - Forzar activación inmediata SIN notificar al usuario
 self.addEventListener('install', (event) => {
-  console.log('[SW] Instalando...');
+  console.log('[SW] Instalando versión silenciosa...');
+  // ✅ NO mostrar ninguna notificación
   event.waitUntil(
-    Promise.all([
-      caches.open(CACHE_NAME).then((cache) => {
-        return cache.addAll(APP_SHELL).catch((err) => {
-          console.warn('[SW] Error cacheando:', err);
-        });
-      }),
-      // ✅ Forzar activación inmediata
-      self.skipWaiting()
-    ])
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(['/']).catch((err) => {
+        console.warn('[SW] Error cacheando:', err);
+      });
+    })
   );
+  // ✅ Forzar activación inmediata SIN notificar
+  self.skipWaiting();
 });
 
-// ✅ ACTIVATE - Tomar control inmediato sin mostrar notificación
+// ============================================
+// ACTIVATE - SILENCIOSO
+// ============================================
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activado');
+  console.log('[SW] Activando versión silenciosa...');
   event.waitUntil(
     Promise.all([
-      // Tomar control inmediato
       self.clients.claim(),
-      // Limpiar cachés antiguos
       caches.keys().then((keys) =>
         Promise.all(
           keys.filter((key) => key !== CACHE_NAME).map((key) => {
@@ -145,22 +129,23 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// ✅ MESSAGE - Suprimir mensajes de actualización al usuario
+// ============================================
+// MESSAGE - SILENCIOSO (sin respuesta)
+// ============================================
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    console.log('[SW] Recibido SKIP_WAITING, actualizando silenciosamente...');
+    console.log('[SW] Recibido SKIP_WAITING, actualizando...');
     self.skipWaiting();
   }
-  // No enviar ninguna respuesta al cliente que pueda generar notificación
+  // ✅ NO enviar respuesta que pueda generar notificación
 });
 
 // ============================================
-// FETCH - Manejador de peticiones
+// FETCH
 // ============================================
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
-  // No cachear API ni Firebase
   if (url.pathname.startsWith('/api')) return;
   if (url.hostname.includes('firebase') || url.hostname.includes('google')) return;
   if (event.request.method !== 'GET') return;
@@ -192,4 +177,4 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-console.log('[SW] ✅ Service Worker unificado listo - Modo silencioso activado');
+console.log('[SW] ✅ Service Worker v4 - Modo completamente silencioso');
