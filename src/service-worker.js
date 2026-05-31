@@ -1,6 +1,7 @@
 /**
- * service-worker.js — Lab.Rosas
+ * service-worker.js — Lab.Demitrio
  * Service Worker ÚNICO (fusiona caché + Firebase)
+ * CON SUPRESIÓN DE NOTIFICACIÓN DE ACTUALIZACIÓN
  */
 
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
@@ -107,33 +108,55 @@ self.addEventListener('notificationclick', (event) => {
 // ============================================
 // CACHÉ PARA OFFLINE
 // ============================================
+
+// ✅ INSTALL - Forzar activación inmediata SIN notificar al usuario
 self.addEventListener('install', (event) => {
   console.log('[SW] Instalando...');
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(APP_SHELL).catch((err) => {
-        console.warn('[SW] Error cacheando:', err);
-      });
-    })
+    Promise.all([
+      caches.open(CACHE_NAME).then((cache) => {
+        return cache.addAll(APP_SHELL).catch((err) => {
+          console.warn('[SW] Error cacheando:', err);
+        });
+      }),
+      // ✅ Forzar activación inmediata
+      self.skipWaiting()
+    ])
   );
-  self.skipWaiting();
 });
 
+// ✅ ACTIVATE - Tomar control inmediato sin mostrar notificación
 self.addEventListener('activate', (event) => {
   console.log('[SW] Activado');
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => {
-          console.log('[SW] Eliminando caché antiguo:', key);
-          return caches.delete(key);
-        })
+    Promise.all([
+      // Tomar control inmediato
+      self.clients.claim(),
+      // Limpiar cachés antiguos
+      caches.keys().then((keys) =>
+        Promise.all(
+          keys.filter((key) => key !== CACHE_NAME).map((key) => {
+            console.log('[SW] Eliminando caché antiguo:', key);
+            return caches.delete(key);
+          })
+        )
       )
-    )
+    ])
   );
-  self.clients.claim();
 });
 
+// ✅ MESSAGE - Suprimir mensajes de actualización al usuario
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    console.log('[SW] Recibido SKIP_WAITING, actualizando silenciosamente...');
+    self.skipWaiting();
+  }
+  // No enviar ninguna respuesta al cliente que pueda generar notificación
+});
+
+// ============================================
+// FETCH - Manejador de peticiones
+// ============================================
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
@@ -169,4 +192,4 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-console.log('[SW] ✅ Service Worker unificado listo');
+console.log('[SW] ✅ Service Worker unificado listo - Modo silencioso activado');

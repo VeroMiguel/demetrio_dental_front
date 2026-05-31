@@ -93,29 +93,46 @@ export class AppComponent implements OnInit, OnDestroy {
     }
   }
 
-  private registrarServiceWorker(): void {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/service-worker.js').then(reg => {
-        console.log('[App] Service Worker registrado:', reg.scope);
-      }).catch(err => {
-        console.warn('[App] Error registrando Service Worker:', err);
-      });
-    }
-  }
+// app.ts - Reemplaza el método registrarServiceWorker() con este
 
-// ❌ ELIMINAR COMPLETAMENTE este método
-// private registrarFirebaseSW(): void {
-//     if ('serviceWorker' in navigator) {
-//         navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-//             scope: '/',
-//             updateViaCache: 'none'
-//         }).then(reg => {
-//             console.log('[App] ✅ Firebase SW registrado:', reg.scope);
-//         }).catch(err => {
-//             console.error('[App] ❌ Error registrando Firebase SW:', err);
-//         });
-//     }
-// }
+private registrarServiceWorker(): void {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/service-worker.js', {
+      scope: '/',
+      updateViaCache: 'none'
+    }).then(reg => {
+      console.log('[App] Service Worker registrado:', reg.scope);
+      
+      // ✅ Escuchar actualizaciones pero NO mostrar notificaciones al usuario
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (newWorker) {
+          console.log('[SW] Nueva versión detectada, actualizando silenciosamente...');
+          
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // Nueva versión disponible, actualizar silenciosamente
+              console.log('[SW] Nueva versión instalada, aplicando sin notificar...');
+              // Forzar actualización silenciosa
+              newWorker.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        }
+      });
+      
+      // ✅ Verificar si hay una nueva versión periódicamente (opcional)
+      setInterval(() => {
+        reg.update();
+        console.log('[SW] Verificando actualizaciones silenciosamente...');
+      }, 6 * 60 * 60 * 1000); // Cada 6 horas
+      
+    }).catch(err => {
+      console.warn('[App] Error registrando Service Worker:', err);
+    });
+  }
+}
+
+
 
   ngOnDestroy() {
     this.authSubscription?.unsubscribe();
