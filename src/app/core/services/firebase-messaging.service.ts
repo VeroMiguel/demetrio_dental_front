@@ -171,17 +171,16 @@ async solicitarPermisoYObtenerToken(forceRefresh: boolean = false): Promise<stri
  */
 // firebase-messaging.service.ts - Reemplazar el método obtenerToken()
 
+// firebase-messaging.service.ts - Modificar obtenerToken()
+
 async obtenerToken(forceRefresh: boolean = false): Promise<string | null> {
     if (!this.messaging) return null;
 
     if (forceRefresh) {
         console.log('🔄 Forzando renovación de token...');
-        // ✅ IMPORTANTE: Eliminar token de localStorage
         localStorage.removeItem(FCM_TOKEN_KEY);
         localStorage.removeItem(FCM_TOKEN_DATE_KEY);
         this.tokenSubject.next(null);
-        
-        // ✅ Esperar a que se limpie
         await new Promise(resolve => setTimeout(resolve, 500));
     } else {
         const tokenCacheado = this.getTokenFromCache();
@@ -194,19 +193,13 @@ async obtenerToken(forceRefresh: boolean = false): Promise<string | null> {
     try {
         const { getToken } = await import('firebase/messaging');
         
-        // ✅ Obtener Service Worker actual
+        // ✅ IMPORTANTE: Esperar a que el Service Worker esté listo
         let swRegistration: ServiceWorkerRegistration | undefined;
         if ('serviceWorker' in navigator) {
-            const registrations = await navigator.serviceWorker.getRegistrations();
-            swRegistration = registrations.find(reg => reg.active?.scriptURL.includes('service-worker.js'));
-            
-            if (!swRegistration) {
-                swRegistration = await navigator.serviceWorker.register('/service-worker.js', {
-                    scope: '/',
-                    updateViaCache: 'none'
-                });
-                console.log('[FCM] Service Worker registrado');
-            }
+            // Esperar a que el SW esté activo
+            const registration = await navigator.serviceWorker.ready;
+            swRegistration = registration;
+            console.log('[FCM] Service Worker listo:', registration.active?.scriptURL);
         }
         
         const token = await getToken(this.messaging, {
@@ -217,7 +210,7 @@ async obtenerToken(forceRefresh: boolean = false): Promise<string | null> {
         if (token) {
             this.saveTokenToCache(token);
             this.tokenSubject.next(token);
-            console.log(`[FCM] ✅ Token obtenido: ${token.substring(0, 30)}...`);
+            console.log(`[FCM] ✅ Token obtenido: ${token.substring(0, 40)}...`);
             return token;
         } else {
             console.warn('[FCM] No se pudo obtener token');

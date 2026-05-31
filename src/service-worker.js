@@ -1,15 +1,15 @@
 /**
  * service-worker.js — Lab.Demitrio
- * Service Worker ÚNICO (fusiona caché + Firebase)
- * VERSIÓN SILENCIOSA - Sin notificaciones de actualización
+ * Service Worker UNIFICADO para PWA + Firebase Push
  */
 
-const CACHE_NAME = 'labdemitrio-v4';  // ✅ CAMBIAR VERSIÓN para forzar actualización
+const CACHE_NAME = 'labdemitrio-v5';
 
+// Importar Firebase (versión compat)
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
-// Configuración de Firebase
+// Configuración de Firebase (misma que en environment)
 const firebaseConfig = {
   apiKey: 'AIzaSyAYc_qACmyDhFtqVzN-OAfFHN0X2-QUSzE',
   authDomain: 'labdemetrio-28c4d.firebaseapp.com',
@@ -19,162 +19,112 @@ const firebaseConfig = {
   appId: '1:195945779360:web:f3622d8b42639e854139c5'
 };
 
+// Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-// Variable para evitar notificaciones duplicadas
-let ultimaNotificacion = null;
+// ============================================
+// MANEJADOR DE MENSAJES PUSH (FIREBASE)
+// ============================================
 
-// ============================================
-// MANEJADOR DE NOTIFICACIONES EN BACKGROUND (FCM)
-// ============================================
+// ✅ IMPORTANTE: Este es el manejador principal para notificaciones push
 messaging.onBackgroundMessage((payload) => {
-  console.log('[SW] Mensaje en background recibido:', payload);
+  console.log('[SW] 📨 Mensaje push recibido en background:', payload);
   
-  const ahora = Date.now();
-  const notificacionId = payload.data?.ordenId || payload.notification?.title;
-  
-  if (ultimaNotificacion === notificacionId && (ahora - (payload.timestamp || 0) < 2000)) {
-    console.log('[SW] Notificación duplicada ignorada');
-    return;
-  }
-  ultimaNotificacion = notificacionId;
-  
-  let titulo = payload.notification?.title || '📋 Lab.demetrio';
-  let cuerpo = payload.notification?.body || 'Tienes una notificación pendiente';
-  let urlDestino = payload.data?.url || '/ordenes';
-  
-  if (payload.data?.titulo_detallado) titulo = payload.data.titulo_detallado;
-  if (payload.data?.cuerpo_detallado) cuerpo = payload.data.cuerpo_detallado;
-  
-  const opciones = {
-    body: cuerpo,
+  const notificationTitle = payload.notification?.title || 'Lab.Demitrio';
+  const notificationOptions = {
+    body: payload.notification?.body || 'Tienes una notificación pendiente',
     icon: '/favicon.ico',
     badge: '/favicon.ico',
-    tag: payload.data?.ordenId || `fcm-${Date.now()}`,
-    data: { url: urlDestino, ...payload.data, timestamp: ahora },
+    tag: payload.data?.ordenId || 'notificacion',
+    data: {
+      url: payload.data?.url || '/ordenes',
+      ordenId: payload.data?.ordenId
+    },
     vibrate: [200, 100, 200],
-    requireInteraction: true,
-    actions: []
+    requireInteraction: true
   };
   
-  self.registration.showNotification(titulo, opciones);
+  // Mostrar la notificación
+  self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
 // ============================================
-// CLICK EN NOTIFICACIÓN
+// MANEJADOR DE CLICK EN NOTIFICACIÓN
 // ============================================
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Click en notificación');
+  console.log('[SW] 🔘 Click en notificación:', event);
   event.notification.close();
   
-  let urlDestino = '/ordenes';
-  if (event.notification.data && event.notification.data.url) {
-    urlDestino = event.notification.data.url;
-  }
+  const urlToOpen = event.notification.data?.url || '/ordenes';
   
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clientList) => {
-        for (const client of clientList) {
-          if (client.url.includes(self.location.origin) && 'focus' in client) {
-            client.focus();
-            if (client.url !== urlDestino && 'navigate' in client) {
-              client.navigate(urlDestino);
-            }
-            return;
+      .then(windowClients => {
+        // Si ya hay una ventana abierta, usarla
+        for (let client of windowClients) {
+          if (client.url === urlToOpen && 'focus' in client) {
+            return client.focus();
           }
         }
+        // Si no, abrir nueva
         if (clients.openWindow) {
-          return clients.openWindow(urlDestino);
+          return clients.openWindow(urlToOpen);
         }
       })
   );
 });
 
 // ============================================
-// INSTALL - SILENCIOSO
+// INSTALL - Cache básico
 // ============================================
 self.addEventListener('install', (event) => {
-  console.log('[SW] Instalando versión silenciosa...');
-  // ✅ NO mostrar ninguna notificación
+  console.log('[SW] Instalando...');
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(['/']).catch((err) => {
-        console.warn('[SW] Error cacheando:', err);
-      });
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.addAll(['/']);
     })
   );
-  // ✅ Forzar activación inmediata SIN notificar
   self.skipWaiting();
 });
 
 // ============================================
-// ACTIVATE - SILENCIOSO
+// ACTIVATE - Limpiar cachés viejos
 // ============================================
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activando versión silenciosa...');
+  console.log('[SW] Activando...');
   event.waitUntil(
-    Promise.all([
-      self.clients.claim(),
-      caches.keys().then((keys) =>
-        Promise.all(
-          keys.filter((key) => key !== CACHE_NAME).map((key) => {
-            console.log('[SW] Eliminando caché antiguo:', key);
-            return caches.delete(key);
-          })
-        )
-      )
-    ])
+    caches.keys().then(keys => {
+      return Promise.all(
+        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+      );
+    })
   );
+  self.clients.claim();
 });
 
 // ============================================
-// MESSAGE - SILENCIOSO (sin respuesta)
-// ============================================
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    console.log('[SW] Recibido SKIP_WAITING, actualizando...');
-    self.skipWaiting();
-  }
-  // ✅ NO enviar respuesta que pueda generar notificación
-});
-
-// ============================================
-// FETCH
+// FETCH - Estrategia de caché
 // ============================================
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
+  // No cachear API
   if (url.pathname.startsWith('/api')) return;
-  if (url.hostname.includes('firebase') || url.hostname.includes('google')) return;
+  if (url.hostname.includes('firebase')) return;
   if (event.request.method !== 'GET') return;
   
   event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        if (response.ok && (
-          url.pathname.endsWith('.js') ||
-          url.pathname.endsWith('.css') ||
-          url.pathname.endsWith('.ico') ||
-          url.pathname.endsWith('.png') ||
-          url.pathname.endsWith('.woff2')
-        )) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+    fetch(event.request).catch(() => {
+      return caches.match(event.request).then(response => {
+        if (response) return response;
+        if (event.request.mode === 'navigate') {
+          return caches.match('/');
         }
-        return response;
-      })
-      .catch(() => {
-        return caches.match(event.request).then(cached => {
-          if (cached) return cached;
-          if (event.request.mode === 'navigate') {
-            return caches.match('/');
-          }
-          return new Response('', { status: 503, statusText: 'Service Unavailable' });
-        });
-      })
+        return new Response('Offline', { status: 503 });
+      });
+    })
   );
 });
 
-console.log('[SW] ✅ Service Worker v4 - Modo completamente silencioso');
+console.log('[SW] ✅ Service Worker v5 - Firebase Push habilitado');
