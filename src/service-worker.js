@@ -13,12 +13,12 @@ const APP_SHELL = ['/'];
 // CONFIGURACIÓN DE FIREBASE
 // ============================================
 const firebaseConfig = {
-  apiKey: 'AIzaSyA4fQYr8Pj1N3eNsTkM90uMCKA495iQX_I',
-  authDomain: 'labrosasnotificaciones.firebaseapp.com',
-  projectId: 'labrosasnotificaciones',
-  storageBucket: 'labrosasnotificaciones.firebasestorage.app',
-  messagingSenderId: '385266856992',
-  appId: '1:385266856992:web:ee718300dcb112b6e23845'
+  apiKey: 'AIzaSyAYc_qACmyDhFtqVzN-OAfFHN0X2-QUSzE',
+  authDomain: 'labdemetrio-28c4d.firebaseapp.com',
+  projectId: 'labdemetrio-28c4d',
+  storageBucket: 'labdemetrio-28c4d.firebasestorage.app',
+  messagingSenderId: '195945779360',
+  appId: '1:195945779360:web:f3622d8b42639e854139c5'
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -43,7 +43,7 @@ messaging.onBackgroundMessage((payload) => {
   }
   ultimaNotificacion = notificacionId;
   
-  let titulo = payload.notification?.title || '📋 Lab.Rosas';
+  let titulo = payload.notification?.title || '📋 Lab.demetrio';
   let cuerpo = payload.notification?.body || 'Tienes una notificación pendiente';
   let urlDestino = payload.data?.url || '/ordenes';
   
