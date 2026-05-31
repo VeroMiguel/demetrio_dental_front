@@ -169,26 +169,20 @@ async solicitarPermisoYObtenerToken(forceRefresh: boolean = false): Promise<stri
  * Obtiene el token FCM. Usa caché si es reciente (< 7 días).
  * @param forceRefresh Si es true, ignora la caché y obtiene un token nuevo
  */
+// firebase-messaging.service.ts - Reemplazar el método obtenerToken()
+
 async obtenerToken(forceRefresh: boolean = false): Promise<string | null> {
     if (!this.messaging) return null;
 
-    // Si forceRefresh, eliminar caché
     if (forceRefresh) {
         console.log('🔄 Forzando renovación de token...');
+        // ✅ IMPORTANTE: Eliminar token de localStorage
         localStorage.removeItem(FCM_TOKEN_KEY);
         localStorage.removeItem(FCM_TOKEN_DATE_KEY);
         this.tokenSubject.next(null);
         
-        // ✅ Limpiar el Service Worker para que se registre de nuevo
-        if ('serviceWorker' in navigator) {
-            const registrations = await navigator.serviceWorker.getRegistrations();
-            for (const registration of registrations) {
-                if (registration.active?.scriptURL.includes('firebase-messaging')) {
-                    await registration.unregister();
-                    console.log('🗑️ Service Worker de Firebase desregistrado');
-                }
-            }
-        }
+        // ✅ Esperar a que se limpie
+        await new Promise(resolve => setTimeout(resolve, 500));
     } else {
         const tokenCacheado = this.getTokenFromCache();
         if (tokenCacheado) {
@@ -199,26 +193,22 @@ async obtenerToken(forceRefresh: boolean = false): Promise<string | null> {
 
     try {
         const { getToken } = await import('firebase/messaging');
-
-        // Registrar el SW de Firebase
+        
+        // ✅ Obtener Service Worker actual
         let swRegistration: ServiceWorkerRegistration | undefined;
         if ('serviceWorker' in navigator) {
-            try {
-                swRegistration = await navigator.serviceWorker.register(
-                      '/service-worker.js',  // ← Cambiar de firebase-messaging-sw.js a service-worker.js
-                    { scope: '/', updateViaCache: 'none' }
-                );
-                console.log('[FCM] ✅ SW de Firebase registrado');
-                
-                // Esperar a que el SW esté activo
-                if (swRegistration.waiting) {
-                    swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
-                }
-            } catch (swErr) {
-                console.warn('[FCM] Error registrando SW:', swErr);
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            swRegistration = registrations.find(reg => reg.active?.scriptURL.includes('service-worker.js'));
+            
+            if (!swRegistration) {
+                swRegistration = await navigator.serviceWorker.register('/service-worker.js', {
+                    scope: '/',
+                    updateViaCache: 'none'
+                });
+                console.log('[FCM] Service Worker registrado');
             }
         }
-
+        
         const token = await getToken(this.messaging, {
             vapidKey: environment.firebase.vapidKey,
             serviceWorkerRegistration: swRegistration
@@ -227,7 +217,7 @@ async obtenerToken(forceRefresh: boolean = false): Promise<string | null> {
         if (token) {
             this.saveTokenToCache(token);
             this.tokenSubject.next(token);
-            console.log(`[FCM] ✅ Token ${forceRefresh ? 'renovado' : 'obtenido'}:`, token.substring(0, 20) + '...');
+            console.log(`[FCM] ✅ Token obtenido: ${token.substring(0, 30)}...`);
             return token;
         } else {
             console.warn('[FCM] No se pudo obtener token');

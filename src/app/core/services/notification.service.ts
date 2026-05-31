@@ -79,17 +79,30 @@ export class NotificationService implements OnDestroy {
   }
 
 // Método para registrar token en backend
+// notification.service.ts - Reemplazar el método registrarTokenEnBackend()
+
 async registrarTokenEnBackend(token: string): Promise<boolean> {
     try {
         const usuario = JSON.parse(localStorage.getItem('user') || '{}');
+        console.log(`📝 [Notif] Registrando token en backend para usuario: ${usuario.id || 'desconocido'}`);
+        console.log(`📝 [Notif] Token: ${token.substring(0, 30)}...`);
+        console.log(`📝 [Notif] Plataforma: ${this.getPlataforma()}`);
+        
         const response = await this.http.post(`${environment.apiUrl}/notificaciones/registrar-token`, {
             token,
             dispositivo: navigator.userAgent,
             plataforma: this.getPlataforma()
         }).toPromise();
         
-        console.log('[Notif] ✅ Token registrado en backend:', response);
-        return true;
+        console.log('[Notif] ✅ Respuesta del backend:', response);
+        
+        // ✅ Verificar que el registro fue exitoso
+        if (response && (response as any).success) {
+            console.log('[Notif] ✅ Token registrado exitosamente en backend');
+            return true;
+        }
+        console.warn('[Notif] ⚠️ El backend no confirmó el registro');
+        return false;
     } catch (error) {
         console.error('[Notif] ❌ Error registrando token en backend:', error);
         return false;
