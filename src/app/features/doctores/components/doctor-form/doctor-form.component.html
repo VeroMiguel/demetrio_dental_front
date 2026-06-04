@@ -24,9 +24,6 @@
           <input type="tel" formControlName="telefono_whatsapp" class="form-control" 
                  placeholder="51999888777">
           <small class="text-muted">Código de país incluido</small>
-              <div *ngIf="doctorForm.get('telefono_whatsapp')?.invalid && doctorForm.get('telefono_whatsapp')?.touched" class="text-danger">
-            El numero es requerido
-          </div>
         </div>
 
         <div class="form-group">
